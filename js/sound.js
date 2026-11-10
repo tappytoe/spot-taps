@@ -1,6 +1,7 @@
 // Tiny WebAudio sound effects, no audio files.
+const MUTE_KEY = 'spottaps.muted';
 let ctx = null;
-let muted = localStorage.getItem('spottaps.muted') === '1';
+let muted = localStorage.getItem(MUTE_KEY) === '1';
 
 function ac() {
   if (!ctx) {
@@ -40,7 +41,7 @@ export const sound = {
   get muted() { return muted; },
   toggle() {
     muted = !muted;
-    localStorage.setItem('spottaps.muted', muted ? '1' : '0');
+    localStorage.setItem(MUTE_KEY, muted ? '1' : '0');
     return muted;
   },
 };
