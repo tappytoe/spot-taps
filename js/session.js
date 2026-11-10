@@ -4,6 +4,8 @@ import { botMove, botDelay } from './ai.js';
 
 export const COUNTDOWN_MS = 3000;
 export const ROUND_PAUSE_MS = 2600;
+// Short breather after each match so everyone can see the card move.
+export const MATCH_PAUSE_MS = { tower: 1100, well: 1100, poison: 1100, potato: 0 };
 
 export class HostSession {
   constructor({ mode, players, clock = () => Date.now(), onView }) {
@@ -33,12 +35,28 @@ export class HostSession {
     const now = this.clock();
     const ev = applyTap(this.state, seat, move, now);
     if (!ev) return;
+
+    const pause = MATCH_PAUSE_MS[this.state.mode] || 0;
+    if (ev.type === 'match' && this.state.phase === 'play' && pause) {
+      this.clearBots();
+      setPhase(this.state, 'pause');
+    }
     this.emit();
+
     if (ev.type === 'match') {
-      if (this.state.phase === 'play') this.scheduleAllBots();
-      else {
+      const phase = this.state.phase;
+      if (phase === 'pause') {
+        this.phaseTimer = setTimeout(() => {
+          if (this.dead) return;
+          setPhase(this.state, 'play');
+          this.emit();
+          this.scheduleAllBots();
+        }, pause);
+      } else if (phase === 'play') {
+        this.scheduleAllBots();
+      } else {
         this.clearBots();
-        if (this.state.phase === 'roundEnd') {
+        if (phase === 'roundEnd') {
           this.phaseTimer = setTimeout(() => {
             if (this.dead) return;
             deal(this.state);
