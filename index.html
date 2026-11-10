@@ -32,8 +32,10 @@
   </section>
 
   <section id="solo" class="screen narrow">
-    <header class="bar"><button class="icon-btn" data-go="home" aria-label="Back">←</button><h2>Pick a game</h2></header>
-    <p class="sub">You vs 🐣 Easy · 🦉 Medium · 🐲 Hard</p>
+    <header class="bar"><button class="icon-btn" data-go="home" aria-label="Back">←</button><h2>Play vs Bots</h2></header>
+    <h3>Your opponents</h3>
+    <div id="soloBots" class="bots"></div>
+    <h3>Pick a game to start</h3>
     <div id="soloModes" class="modes"></div>
   </section>
 
@@ -67,6 +69,7 @@
       <button class="icon-btn" id="muteBtn" aria-label="Sound">🔊</button>
     </header>
     <div id="opponents" class="opponents"></div>
+    <div id="table" class="table"></div>
     <div id="centerZone" class="zone"></div>
     <div id="myZone" class="zone"></div>
     <p id="hint" class="hint"></p>
