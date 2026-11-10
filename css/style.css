@@ -105,8 +105,7 @@ h3 { margin: 6px 0 0; }
   background: #fff; border: 5px solid var(--seat, #cbd5e1); container-type: inline-size;
   box-shadow: 0 8px 20px rgba(43,35,80,.15);
 }
-.card.sm { --size: var(--sm); border-width: 4px; }
-.card.mine { --size: var(--mine); }
+.card.cell { --size: var(--cell); border-width: 4px; }
 .card.demo { --size: 150px; animation: spin 24s linear infinite; }
 .card.back {
   display: grid; place-items: center;
@@ -118,7 +117,7 @@ h3 { margin: 6px 0 0; }
   position: absolute; left: var(--x); top: var(--y); width: calc(var(--s) * 1%); aspect-ratio: 1;
   transform: translate(-50%, -50%) rotate(var(--r)); border-radius: 50%;
   background: hsl(var(--h) 85% 90%); display: grid; place-items: center;
-  font-size: calc(var(--s) * .6cqw); line-height: 1; cursor: pointer; user-select: none;
+  font-size: calc(var(--s) * .72cqw); line-height: 1; cursor: pointer; user-select: none;
   font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
 }
 .sym span { pointer-events: none; }
@@ -136,10 +135,9 @@ h3 { margin: 6px 0 0; }
   height: 100dvh; min-height: 0; overflow: hidden; position: relative; gap: 6px;
   padding: max(8px, env(safe-area-inset-top)) 10px max(8px, env(safe-area-inset-bottom));
   user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
-  --big: min(64vw, 33dvh, 400px); --sm: min(28vw, 19dvh, 180px); --mine: min(24vw, 15dvh, 150px);
+  --big: min(64vw, 33dvh, 400px);
+  --cell: min(45vw, calc(50dvh - 100px), 340px);
 }
-#game.mode-potato { --big: min(68vw, 40dvh, 430px); --sm: min(29vw, 23dvh, 210px); }
-#game.mode-poison { --big: min(60vw, 32dvh, 380px); }
 .topbar { display: flex; align-items: center; gap: 8px; }
 .topbar h2 { flex: 1; margin: 0; font-size: 1.05rem; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .info { font-weight: 800; color: var(--muted); min-width: 2.5em; text-align: right; }
