@@ -9,8 +9,9 @@ const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const LEVELS = ['easy', 'medium', 'hard'];
-const PROFILE_KEY = 'spotapit.profile';
-const BOTS_KEY = 'spotapit.bots';
+const PROFILE_KEY = 'spottaps.profile';
+const BOTS_KEY = 'spottaps.bots';
+const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
 const profile = loadProfile();
 let soloLevels = loadLevels();
@@ -80,14 +81,6 @@ function feed(msg, color = '#6c4cff', ms = 1400) {
     h.classList.remove('feed');
     h.textContent = view && ctl ? hintText(view, ctl.now()) : '';
   }, ms);
-}
-
-function burst(emoji) {
-  const el = document.createElement('div');
-  el.className = 'burst';
-  el.textContent = emoji;
-  $('#game').append(el);
-  setTimeout(() => el.remove(), 800);
 }
 
 async function withBusy(fn) {
@@ -165,8 +158,10 @@ function onView(v) {
   view = v;
   if (prev?.phase === 'countdown' && v.phase === 'play') sound.go();
   if (v.phase === 'countdown' && prev?.phase !== 'countdown') lastCount = 0;
-  handleEvent(v);
+  const before = captureRects(); // where cards were, before re-render
+  const ev = handleEvent(v);
   renderGame(v);
+  if (ev?.type === 'match') flyCard(v, ev, before);
   clearInterval(overlayTimer); overlayTimer = null;
   if (v.phase === 'countdown') overlayTimer = setInterval(renderOverlay, 150);
   clearTimeout(resultsTimer);
@@ -177,7 +172,7 @@ const seatName = (v, s) => (s === ctl.seat ? 'You' : v.players[s].name);
 
 function handleEvent(v) {
   const ev = v.event;
-  if (!ev || ev.v <= lastEventV) return;
+  if (!ev || ev.v <= lastEventV) return null;
   lastEventV = ev.v;
   const who = v.players[ev.seat];
   if (ev.type === 'match') {
@@ -185,12 +180,63 @@ function handleEvent(v) {
     let msg = `${who.avatar} ${seatName(v, ev.seat)} spotted ${SYMBOLS[ev.symbol]}`;
     if (ev.target != null && ev.target >= 0) msg += ` → ${ev.target === ctl.seat ? 'you!' : v.players[ev.target].name}`;
     feed(msg, who.color);
-    burst(SYMBOLS[ev.symbol]);
   } else if (ev.type === 'miss' && ev.seat === ctl.seat) {
     sound.bad();
     navigator.vibrate?.(180);
     shakeMe = true;
   }
+  return ev;
+}
+
+/* ---------- flying card animation ---------- */
+function captureRects() {
+  const m = {};
+  $$('#game [data-seat]').forEach((el) => {
+    const c = el.querySelector('.card:not(.empty)');
+    m[el.dataset.seat] = { r: (c || el).getBoundingClientRect(), card: !!c };
+  });
+  return m;
+}
+
+function square({ r, card }) {
+  const s = card ? r.width : Math.min(72, r.width, r.height * 1.4);
+  return { cx: r.left + r.width / 2, cy: r.top + r.height / 2, s };
+}
+
+function flyCard(v, ev, before) {
+  if (reduceMotion || document.hidden) return;
+  const key = (s) => (s === ctl.seat ? 'me' : String(s));
+  const [from, to, cardId] = {
+    tower: ['center', key(ev.seat), v.players[ev.seat].top],
+    well: [key(ev.seat), 'center', v.center?.top],
+    poison: ['center', key(ev.target), v.players[ev.target]?.top],
+    potato: [key(ev.seat), key(ev.target), v.players[ev.target]?.top],
+  }[v.mode];
+  const src = before[from];
+  const toEl = $(`#game [data-seat="${to}"]`);
+  if (!src || !toEl || cardId == null) return;
+
+  const toCard = toEl.querySelector('.card:not(.empty)');
+  const A = square(src);
+  const B = square({ r: (toCard || toEl).getBoundingClientRect(), card: !!toCard });
+  const fly = document.createElement('div');
+  fly.className = 'flyer';
+  fly.style.cssText = `left:${A.cx - A.s / 2}px;top:${A.cy - A.s / 2}px;width:${A.s}px;height:${A.s}px`;
+  fly.innerHTML = cardHTML(cardId, { size: 'fly', color: v.players[ev.seat].color });
+  document.body.append(fly);
+
+  // Hide the landing card until the flyer arrives (not in Hot Potato: you need to see it right away).
+  const hide = toCard && v.mode !== 'potato';
+  if (hide) toCard.style.visibility = 'hidden';
+  const dx = B.cx - A.cx, dy = B.cy - A.cy, k = B.s / A.s;
+  const anim = fly.animate([
+    { transform: 'translate(0,0) scale(1) rotate(0deg)' },
+    { transform: `translate(${dx / 2}px, ${dy / 2 - 40}px) scale(${((1 + k) / 2) * 1.1}) rotate(180deg)`, offset: 0.5 },
+    { transform: `translate(${dx}px, ${dy}px) scale(${k}) rotate(360deg)` },
+  ], { duration: v.mode === 'potato' ? 420 : 600, easing: 'ease-in-out' });
+  const done = () => { fly.remove(); if (hide) toCard.style.visibility = ''; };
+  anim.onfinish = done;
+  anim.oncancel = done;
 }
 
 /* ---------- rendering ---------- */
@@ -205,7 +251,7 @@ function seatCell(v, s, now, hidden, size = 'cell') {
   const card = p.top == null
     ? `<div class="card ${size} empty" style="--seat:${p.color}">${v.mode === 'potato' ? '✅' : '🎉'}</div>`
     : cardHTML(p.top, { owner: mine ? 'me' : s, size, color: p.color, hidden });
-  return `<div class="slot ${frozen} ${mine ? 'is-me' : ''}" style="--seat:${p.color}">${card}
+  return `<div class="slot ${frozen} ${mine ? 'is-me' : ''}" data-seat="${mine ? 'me' : s}" style="--seat:${p.color}">${card}
     <div class="tag-line">${p.avatar} ${mine ? 'You' : esc(p.name)} · ${scoreText(v, p)}</div></div>`;
 }
 
@@ -214,7 +260,7 @@ function centerCell(v, hidden) {
   const card = c.top == null
     ? '<div class="card cell empty">🏁</div>'
     : cardHTML(c.top, { owner: 'center', size: 'cell', color: '#2b2350', hidden });
-  return `<div class="slot center-slot">${card}<div class="tag-line">🎁 Gift · ${c.count} left</div></div>`;
+  return `<div class="slot center-slot" data-seat="center">${card}<div class="tag-line">🎁 Gift · ${c.count} left</div></div>`;
 }
 
 function centerPile(v, hidden) {
@@ -222,14 +268,15 @@ function centerPile(v, hidden) {
   const card = c.top == null
     ? '<div class="card empty">🏁</div>'
     : cardHTML(c.top, { owner: 'center', color: '#2b2350', hidden });
-  return `<div class="pile">${card}<span class="badge">🃏 ${c.count}</span></div>`;
+  return `<div class="pile" data-seat="center">${card}<span class="badge">🃏 ${c.count}</span></div>`;
 }
 
 function chip(v, s, now, extra = '') {
   const p = v.players[s];
+  const mine = s === ctl.seat;
   const frozen = p.frozenUntil > now ? 'frozen' : '';
-  const name = s === ctl.seat ? 'You' : esc(p.name);
-  return `<div class="chip ${extra} ${frozen}" style="--seat:${p.color}"><span class="av">${p.avatar}</span><b>${name}</b><span>${scoreText(v, p)}</span></div>`;
+  return `<div class="chip ${extra} ${frozen}" data-seat="${mine ? 'me' : s}" style="--seat:${p.color}">
+    <span class="av">${p.avatar}</span><b>${mine ? 'You' : esc(p.name)}</b><span>${scoreText(v, p)}</span></div>`;
 }
 
 function hintText(v, now) {
@@ -250,6 +297,8 @@ function renderGame(v) {
   const now = ctl.now();
   const n = v.players.length;
   const hidden = v.phase === 'countdown';
+  // During the post-match pause the next middle card stays face down.
+  const hideCenter = hidden || (v.phase === 'pause' && v.mode !== 'well');
   const opps = [1, 2, 3].map((k) => (ctl.seat + k) % n);
   const m = MODES[v.mode];
   $('#gameTitle').textContent = `${m.icon} ${m.name}`;
@@ -258,7 +307,7 @@ function renderGame(v) {
   if (v.mode === 'potato' || v.mode === 'poison') {
     // 2×2 table: three rivals + (your card | the gift pile)
     const cells = opps.map((s) => seatCell(v, s, now, hidden));
-    cells.push(v.mode === 'potato' ? seatCell(v, ctl.seat, now, hidden) : centerCell(v, hidden));
+    cells.push(v.mode === 'potato' ? seatCell(v, ctl.seat, now, hidden) : centerCell(v, hideCenter));
     $('#table').innerHTML = cells.join('');
     $('#opponents').innerHTML = '';
     $('#centerZone').innerHTML = '';
@@ -266,7 +315,7 @@ function renderGame(v) {
   } else {
     $('#table').innerHTML = '';
     $('#opponents').innerHTML = opps.map((s) => chip(v, s, now)).join('');
-    $('#centerZone').innerHTML = centerPile(v, hidden);
+    $('#centerZone').innerHTML = centerPile(v, hideCenter);
     $('#myZone').innerHTML = seatCell(v, ctl.seat, now, hidden, 'big');
   }
 
@@ -539,9 +588,9 @@ function renderLobby() {
 async function shareInvite() {
   if (!online) return;
   const url = `${location.origin}${location.pathname}?room=${online.room.code}`;
-  const text = `Join my SpoTap It! game! Room ${online.room.code}`;
+  const text = `Join my Spot Taps game! Room ${online.room.code}`;
   try {
-    if (navigator.share) await navigator.share({ title: 'SpoTap It!', text, url });
+    if (navigator.share) await navigator.share({ title: 'Spot Taps', text, url });
     else { await navigator.clipboard.writeText(url); toast('Invite link copied 📋'); }
   } catch { /* share cancelled */ }
 }
