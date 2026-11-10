@@ -1,0 +1,13 @@
+{
+  "name": "Spot Taps",
+  "short_name": "Spot Taps",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fff6e9",
+  "theme_color": "#6c4cff",
+  "icons": [
+    { "src": "assets/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
