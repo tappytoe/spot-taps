@@ -35,6 +35,10 @@ h3 { margin: 6px 0 0; }
 .logo h1 { font-size: clamp(2.4rem, 11vw, 3.6rem); margin: .15em 0 0; letter-spacing: -1px; }
 .logo h1 span { color: var(--pink); }
 .logo .tag { color: var(--muted); margin: 0; font-weight: 700; }
+.logo .brand {
+  margin: 2px 0 0; font-size: .8rem; font-weight: 800; color: var(--violet);
+  letter-spacing: .08em; text-transform: uppercase;
+}
 #homeCard { display: grid; place-items: center; }
 
 /* buttons & inputs */
@@ -81,6 +85,23 @@ h3 { margin: 6px 0 0; }
 .mode:disabled { cursor: default; }
 .modes.compact .mode { padding: 10px 6px; }
 .modes.compact .mode .mi { font-size: 1.8rem; }
+
+/* solo bot picker */
+.bots { display: grid; gap: 8px; }
+.bot-row {
+  display: flex; align-items: center; gap: 10px; background: #fff; border-radius: 16px;
+  padding: 8px 10px; border-left: 8px solid var(--seat);
+}
+.bot-row .av { font-size: 1.8rem; width: 1.2em; text-align: center; }
+.seg {
+  flex: 1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;
+  background: #f1edfa; border-radius: 999px; padding: 4px;
+}
+.seg button {
+  border: 0; border-radius: 999px; padding: 8px 4px; font: inherit; font-weight: 800; font-size: .9rem;
+  background: transparent; color: var(--muted); cursor: pointer;
+}
+.seg button.sel { background: var(--seat); color: #fff; box-shadow: 0 2px 0 rgba(0,0,0,.15); }
 
 /* lobby */
 #roomCode { letter-spacing: .2em; color: var(--violet); }
@@ -136,16 +157,17 @@ h3 { margin: 6px 0 0; }
   padding: max(8px, env(safe-area-inset-top)) 10px max(8px, env(safe-area-inset-bottom));
   user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
   --big: min(64vw, 33dvh, 400px);
-  --cell: min(45vw, calc(50dvh - 100px), 340px);
+  --cell: min(45vw, calc(50dvh - 125px), 340px);
 }
-.topbar { display: flex; align-items: center; gap: 8px; }
+.topbar { position: relative; z-index: 2; display: flex; align-items: center; gap: 8px; }
 .topbar h2 { flex: 1; margin: 0; font-size: 1.05rem; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .info { font-weight: 800; color: var(--muted); min-width: 2.5em; text-align: right; }
 .opponents { display: flex; justify-content: center; gap: 8px; }
+.opponents:empty { display: none; }
 .zone { flex: 1; display: grid; place-items: center; min-height: 0; }
 .zone:empty { display: none; }
+#game.mode-poison #myZone, #game.mode-potato #myZone { flex: none; }
 .slot { position: relative; display: flex; flex-direction: column; align-items: center; min-width: 0; }
-.opponents .slot { flex: 1; max-width: calc(var(--sm) + 12px); }
 .tag-line {
   margin-top: 5px; max-width: 100%; background: var(--seat); color: #fff; border-radius: 999px;
   padding: 2px 10px; font-size: .8rem; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -157,6 +179,18 @@ h3 { margin: 6px 0 0; }
 }
 .chip .av { font-size: 1.5rem; }
 .chip b { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chip.mine-chip { flex: none; max-width: none; flex-direction: row; gap: 8px; padding: 4px 14px; align-self: center; font-size: .95rem; }
+.chip.mine-chip::after { font-size: 1.6rem; }
+
+/* 2×2 table for Hot Potato / Poisoned Gift */
+.table {
+  flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(2, auto);
+  justify-content: center; align-content: safe center; gap: 10px 14px;
+}
+.table:empty { display: none; }
+.slot.is-me .tag-line { box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--seat); }
+.center-slot .tag-line { background: var(--ink); }
+
 .slot.frozen .card, .chip.frozen { filter: grayscale(.7) brightness(1.05); }
 .slot.frozen::after, .chip.frozen::after {
   content: '❄️'; position: absolute; top: 42%; left: 50%; transform: translate(-50%, -50%);
@@ -175,10 +209,10 @@ h3 { margin: 6px 0 0; }
 .ov-num { font-size: 7rem; font-weight: 900; color: var(--violet); animation: pop .4s ease-out; text-shadow: 0 4px 0 #fff; }
 .ov-big { font-size: 5rem; }
 .ov-sub { font-size: 1.2rem; font-weight: 800; padding: 0 20px; }
-.burst {
-  position: absolute; left: 50%; top: 45%; font-size: 4.5rem; pointer-events: none; z-index: 6;
-  animation: burst .75s ease-out forwards;
-}
+
+/* flying card */
+.flyer { position: fixed; z-index: 40; pointer-events: none; }
+.flyer .card { --size: 100%; box-shadow: 0 16px 34px rgba(43,35,80,.35); }
 
 /* results */
 .results { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
@@ -191,7 +225,7 @@ h3 { margin: 6px 0 0; }
 .results .medal, .results .av { font-size: 1.6rem; }
 .results .score { margin-left: auto; font-weight: 800; }
 
-/* toasts */
+/* toasts (outside games only) */
 #toasts {
   position: fixed; left: 50%; top: calc(58px + env(safe-area-inset-top)); transform: translateX(-50%);
   width: min(92vw, 420px); display: flex; flex-direction: column; gap: 6px; z-index: 50; pointer-events: none;
@@ -206,32 +240,7 @@ h3 { margin: 6px 0 0; }
 .shake { animation: shake .4s; }
 @keyframes pop { 0% { transform: scale(.6) rotate(-15deg); opacity: .3; } 70% { transform: scale(1.06); } 100% { transform: none; } }
 @keyframes shake { 0%,100% { transform: none; } 20%,60% { transform: translateX(-10px); } 40%,80% { transform: translateX(10px); } }
-@keyframes burst { from { opacity: 1; transform: translate(-50%,-50%) scale(.5); } to { opacity: 0; transform: translate(-50%,-90%) scale(2); } }
 @keyframes pulse { 50% { transform: translate(-50%,-50%) scale(1.15); } }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; } }
-/* 2×2 table for Hot Potato / Poisoned Gift */
-.table {
-  flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(2, auto);
-  justify-content: center; align-content: center; gap: 10px 14px;
-}
-.table:empty { display: none; }
-.slot.is-me .tag-line { box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--seat); }
-.center-slot .tag-line { background: var(--ink); }
-.chip.mine-chip { flex: none; max-width: none; flex-direction: row; gap: 8px; padding: 4px 14px; align-self: center; font-size: .95rem; }
-.chip.mine-chip::after { font-size: 1.6rem; }
-
-/* solo bot picker */
-.bots { display: grid; gap: 8px; }
-.bot-row {
-  display: flex; align-items: center; gap: 10px; background: #fff; border-radius: 16px;
-  padding: 8px 10px; border-left: 8px solid var(--seat);
-}
-.bot-row .av { font-size: 1.8rem; width: 1.2em; text-align: center; }
-.seg { flex: 1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; background: #f1edfa; border-radius: 999px; padding: 4px; }
-.seg button {
-  border: 0; border-radius: 999px; padding: 8px 4px; font: inherit; font-weight: 800; font-size: .9rem;
-  background: transparent; color: var(--muted); cursor: pointer;
-}
-.seg button.sel { background: var(--seat); color: #fff; box-shadow: 0 2px 0 rgba(0,0,0,.15); }
