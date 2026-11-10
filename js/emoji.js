@@ -10,9 +10,9 @@ export const AVATARS = ['😎','🤓','🥳','🤠','👸','🤴','🧙','🦸',
 export const SEAT_COLORS = ['#ff5a5f', '#2f9bff', '#22c55e', '#f59e0b'];
 
 export const BOTS = {
-  easy:   { name: 'Easy Bot',   avatar: '🐣' },
-  medium: { name: 'Medium Bot', avatar: '🦉' },
-  hard:   { name: 'Hard Bot',   avatar: '🐲' },
+  easy:   { name: 'Easy Bot',   label: 'Easy',   avatar: '🐣' },
+  medium: { name: 'Medium Bot', label: 'Medium', avatar: '🦉' },
+  hard:   { name: 'Hard Bot',   label: 'Hard',   avatar: '🐲' },
 };
 
 export const MODES = {
