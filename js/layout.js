@@ -12,13 +12,13 @@ export function cardLayout(id) {
   const ring = syms.length - 1;
   const start = r() * Math.PI * 2;
   const out = syms.map((sym, i) => {
-    if (i === 0) return { sym, x: 50, y: 50, s: r2(23 + r() * 5), rot: r2(r() * 360 - 180) };
+    if (i === 0) return { sym, x: 50, y: 50, s: r2(25 + r() * 4), rot: r2(r() * 360 - 180) };
     const a = start + (i - 1) * ((2 * Math.PI) / ring);
     return {
       sym,
       x: r2(50 + 31 * Math.cos(a)),
       y: r2(50 + 31 * Math.sin(a)),
-      s: r2(17 + r() * 8),
+      s: r2(20 + r() * 6),
       rot: r2(r() * 360 - 180),
     };
   });
