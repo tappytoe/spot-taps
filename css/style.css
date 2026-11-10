@@ -208,3 +208,27 @@ h3 { margin: 6px 0 0; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; } }
+/* 2×2 table for Hot Potato / Poisoned Gift */
+.table {
+  flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(2, auto);
+  justify-content: center; align-content: center; gap: 10px 14px;
+}
+.table:empty { display: none; }
+.slot.is-me .tag-line { box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--seat); }
+.center-slot .tag-line { background: var(--ink); }
+.chip.mine-chip { flex: none; max-width: none; flex-direction: row; gap: 8px; padding: 4px 14px; align-self: center; font-size: .95rem; }
+.chip.mine-chip::after { font-size: 1.6rem; }
+
+/* solo bot picker */
+.bots { display: grid; gap: 8px; }
+.bot-row {
+  display: flex; align-items: center; gap: 10px; background: #fff; border-radius: 16px;
+  padding: 8px 10px; border-left: 8px solid var(--seat);
+}
+.bot-row .av { font-size: 1.8rem; width: 1.2em; text-align: center; }
+.seg { flex: 1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; background: #f1edfa; border-radius: 999px; padding: 4px; }
+.seg button {
+  border: 0; border-radius: 999px; padding: 8px 4px; font: inherit; font-weight: 800; font-size: .9rem;
+  background: transparent; color: var(--muted); cursor: pointer;
+}
+.seg button.sel { background: var(--seat); color: #fff; box-shadow: 0 2px 0 rgba(0,0,0,.15); }
