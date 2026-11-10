@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#6c4cff">
+  <meta name="description" content="Spot Taps: a fast emoji matching party game. Play vs bots or online with friends.">
+  <title>Spot Taps — find the match!</title>
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="assets/icon.svg">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="css/style.css?v=__BUILD__">
+  <script type="module" src="js/main.js?v=__BUILD__"></script>
+</head>
+<body>
+<main id="app">
+
+  <section id="home" class="screen narrow active">
+    <div class="logo">
+      <div id="homeCard"></div>
+      <h1>Spot<span>Taps</span></h1>
+      <p class="tag">Find the match. Be the fastest! ⚡</p>
+    </div>
+    <input id="nameInput" class="input" maxlength="12" placeholder="Your name" autocomplete="off">
+    <div id="avatarRow" class="avatar-row"></div>
+    <div class="menu">
+      <button class="btn big pink" data-go="solo">🎮 Play vs Bots</button>
+      <button class="btn big blue" id="hostBtn">🌐 Host Online</button>
+      <button class="btn big green" data-go="join">🔗 Join Online</button>
+      <button class="btn ghost" data-go="help">📖 How to play</button>
+    </div>
+  </section>
+
+  <section id="solo" class="screen narrow">
+    <header class="bar"><button class="icon-btn" data-go="home" aria-label="Back">←</button><h2>Pick a game</h2></header>
+    <p class="sub">You vs 🐣 Easy · 🦉 Medium · 🐲 Hard</p>
+    <div id="soloModes" class="modes"></div>
+  </section>
+
+  <section id="join" class="screen narrow">
+    <header class="bar"><button class="icon-btn" data-go="home" aria-label="Back">←</button><h2>Join a room</h2></header>
+    <input id="codeInput" class="input code" maxlength="4" placeholder="ABCD" autocapitalize="characters" autocomplete="off" spellcheck="false">
+    <button class="btn big green" id="joinBtn">🔗 Join</button>
+    <p class="sub">Ask the host for the 4-letter code or invite link.</p>
+  </section>
+
+  <section id="lobby" class="screen narrow">
+    <header class="bar"><button class="icon-btn" id="lobbyBack" aria-label="Leave">←</button><h2>Room <span id="roomCode"></span></h2></header>
+    <button class="btn blue" id="shareBtn">📤 Invite friends</button>
+    <div id="seats" class="seats"></div>
+    <h3>Game</h3>
+    <div id="lobbyModes" class="modes compact"></div>
+    <button class="btn big pink" id="startBtn">▶️ Start</button>
+    <p id="lobbyNote" class="sub"></p>
+  </section>
+
+  <section id="help" class="screen narrow">
+    <header class="bar"><button class="icon-btn" data-go="home" aria-label="Back">←</button><h2>How to play</h2></header>
+    <div id="helpBody" class="help"></div>
+  </section>
+
+  <section id="game" class="screen">
+    <header class="topbar">
+      <button class="icon-btn" id="quitBtn" aria-label="Leave game">✖</button>
+      <h2 id="gameTitle"></h2>
+      <span id="gameInfo" class="info"></span>
+      <button class="icon-btn" id="muteBtn" aria-label="Sound">🔊</button>
+    </header>
+    <div id="opponents" class="opponents"></div>
+    <div id="centerZone" class="zone"></div>
+    <div id="myZone" class="zone"></div>
+    <p id="hint" class="hint"></p>
+    <div id="overlay" class="overlay hidden"></div>
+  </section>
+
+  <section id="results" class="screen narrow">
+    <h2 id="resultTitle" class="center big-title"></h2>
+    <ol id="resultList" class="results"></ol>
+    <button class="btn big pink" id="againBtn">🔁 Play again</button>
+    <button class="btn ghost" id="homeBtn">🏠 Home</button>
+  </section>
+
+</main>
+<div id="toasts"></div>
+</body>
+</html>
