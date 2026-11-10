@@ -34,6 +34,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - run: npm install --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - run: sudo apt-get install -y fonts-noto-color-emoji
       - run: npm run art
       - run: npm run build
         env:
@@ -42,6 +45,7 @@ jobs:
           FIREBASE_DATABASE_URL: ${{ vars.FIREBASE_DATABASE_URL }}
           FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
           FIREBASE_APP_ID: ${{ vars.FIREBASE_APP_ID }}
+      - run: node tools/thumbnail.mjs dist/thumbnail.png
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
