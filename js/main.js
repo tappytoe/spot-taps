@@ -9,16 +9,18 @@ const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const LEVELS = ['easy', 'medium', 'hard'];
-const PROFILE_KEY = 'spottaps.profile';
+const PROFILE_KEY = 'spotapit.profile';
+const BOTS_KEY = 'spotapit.bots';
 
 const profile = loadProfile();
+let soloLevels = loadLevels();
 let ctl = null;    // active game: { seat, now(), tap(move), quit(), again(), canAgain }
 let view = null;
 let online = null; // online room context
 let lastEventV = 0, lastTops = {}, lastCount = 0, shakeMe = false;
-let overlayTimer = null, refreshTimer = null, resultsTimer = null;
+let overlayTimer = null, refreshTimer = null, resultsTimer = null, feedTimer = null;
 
-/* ---------- profile ---------- */
+/* ---------- profile & settings ---------- */
 function loadProfile() {
   try {
     const p = JSON.parse(localStorage.getItem(PROFILE_KEY));
@@ -26,9 +28,28 @@ function loadProfile() {
   } catch { /* ignore */ }
   return { name: '', avatar: AVATARS[Math.floor(Math.random() * AVATARS.length)] };
 }
+function loadLevels() {
+  try {
+    const l = JSON.parse(localStorage.getItem(BOTS_KEY));
+    if (Array.isArray(l) && l.length === 3 && l.every((x) => LEVELS.includes(x))) return l;
+  } catch { /* ignore */ }
+  return ['easy', 'medium', 'hard'];
+}
 const saveProfile = () => localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+const saveLevels = () => localStorage.setItem(BOTS_KEY, JSON.stringify(soloLevels));
 const myName = () => profile.name.trim().slice(0, 12) || 'Player';
 const me = () => ({ name: myName(), avatar: profile.avatar });
+
+/** Give duplicate bots numbered names: "Hard Bot 1", "Hard Bot 2". */
+function nameBots(seats) {
+  const total = {}, seen = {};
+  seats.forEach((s) => { if (s.bot) total[s.bot] = (total[s.bot] || 0) + 1; });
+  return seats.map((s) => {
+    if (!s.bot) return s;
+    seen[s.bot] = (seen[s.bot] || 0) + 1;
+    return { ...s, name: total[s.bot] > 1 ? `${BOTS[s.bot].name} ${seen[s.bot]}` : BOTS[s.bot].name };
+  });
+}
 
 /* ---------- helpers ---------- */
 function show(id) {
@@ -37,6 +58,8 @@ function show(id) {
 }
 
 function toast(msg, color = '#6c4cff', ms = 1800) {
+  // During a game, messages go to the hint bar so they never cover a card.
+  if ($('#game').classList.contains('active')) return feed(msg, color);
   const box = $('#toasts');
   const el = document.createElement('div');
   el.className = 'toast';
@@ -45,6 +68,18 @@ function toast(msg, color = '#6c4cff', ms = 1800) {
   box.append(el);
   while (box.children.length > 3) box.firstChild.remove();
   setTimeout(() => el.remove(), ms);
+}
+
+function feed(msg, color = '#6c4cff', ms = 1400) {
+  const h = $('#hint');
+  h.textContent = msg;
+  h.style.setProperty('--c', color);
+  h.classList.add('feed');
+  clearTimeout(feedTimer);
+  feedTimer = setTimeout(() => {
+    h.classList.remove('feed');
+    h.textContent = view && ctl ? hintText(view, ctl.now()) : '';
+  }, ms);
 }
 
 function burst(emoji) {
@@ -75,13 +110,22 @@ function modeTiles(el, onPick, selected) {
 }
 
 /* ---------- solo ---------- */
+function renderSoloBots() {
+  $('#soloBots').innerHTML = soloLevels.map((lv, i) =>
+    `<div class="bot-row" style="--seat:${SEAT_COLORS[i + 1]}">
+      <span class="av">${BOTS[lv].avatar}</span>
+      <div class="seg">${LEVELS.map((l) =>
+        `<button data-bot="${i}" data-lv="${l}" class="${l === lv ? 'sel' : ''}">${BOTS[l].label}</button>`).join('')}</div>
+    </div>`).join('');
+}
+
 function startSolo(mode) {
   stopGame();
-  const players = [
+  const seats = nameBots([
     { name: myName(), avatar: profile.avatar, color: SEAT_COLORS[0] },
-    ...LEVELS.map((lv, i) => ({ name: BOTS[lv].name, avatar: BOTS[lv].avatar, color: SEAT_COLORS[i + 1], bot: lv })),
-  ];
-  const host = new HostSession({ mode, players, onView });
+    ...soloLevels.map((lv, i) => ({ avatar: BOTS[lv].avatar, color: SEAT_COLORS[i + 1], bot: lv })),
+  ]);
+  const host = new HostSession({ mode, players: seats, onView });
   ctl = { seat: 0, now: () => Date.now(), tap: (m) => host.tap(0, m), quit: () => host.destroy(), again: () => startSolo(mode), canAgain: true };
   enterGame(mode);
   host.start();
@@ -91,13 +135,15 @@ function startSolo(mode) {
 function enterGame(mode) {
   lastEventV = 0; lastTops = {}; lastCount = 0; shakeMe = false;
   clearTimeout(resultsTimer);
+  clearTimeout(feedTimer);
+  $('#hint').classList.remove('feed');
   $('#game').className = `screen mode-${mode}`;
   show('game');
 }
 
 function stopTimers() {
   clearInterval(overlayTimer); overlayTimer = null;
-  clearTimeout(refreshTimer); clearTimeout(resultsTimer);
+  clearTimeout(refreshTimer); clearTimeout(resultsTimer); clearTimeout(feedTimer);
 }
 
 function stopGame() {
@@ -135,11 +181,10 @@ function handleEvent(v) {
   lastEventV = ev.v;
   const who = v.players[ev.seat];
   if (ev.type === 'match') {
-    const mine = ev.seat === ctl.seat;
-    if (mine) sound.good(); else sound.tick();
+    if (ev.seat === ctl.seat) sound.good(); else sound.tick();
     let msg = `${who.avatar} ${seatName(v, ev.seat)} spotted ${SYMBOLS[ev.symbol]}`;
     if (ev.target != null && ev.target >= 0) msg += ` → ${ev.target === ctl.seat ? 'you!' : v.players[ev.target].name}`;
-    toast(msg, who.color, 1400);
+    feed(msg, who.color);
     burst(SYMBOLS[ev.symbol]);
   } else if (ev.type === 'miss' && ev.seat === ctl.seat) {
     sound.bad();
@@ -153,19 +198,26 @@ function scoreText(v, p) {
   return { tower: `🃏 ${p.count}`, well: `🃏 ${p.count} left`, poison: `☠️ ${p.count}`, potato: `🥔 ${p.penalty}` }[v.mode];
 }
 
-function oppHTML(v, s, cardMode, now, hidden) {
+function seatCell(v, s, now, hidden, size = 'cell') {
   const p = v.players[s];
+  const mine = s === ctl.seat;
   const frozen = p.frozenUntil > now ? 'frozen' : '';
-  if (!cardMode) {
-    return `<div class="chip ${frozen}" style="--seat:${p.color}"><span class="av">${p.avatar}</span><b>${esc(p.name)}</b><span>${scoreText(v, p)}</span></div>`;
-  }
   const card = p.top == null
-    ? `<div class="card sm empty" style="--seat:${p.color}">✅</div>`
-    : cardHTML(p.top, { owner: s, size: 'sm', color: p.color, hidden });
-  return `<div class="slot ${frozen}" style="--seat:${p.color}">${card}<div class="tag-line">${p.avatar} ${esc(p.name)} · ${scoreText(v, p)}</div></div>`;
+    ? `<div class="card ${size} empty" style="--seat:${p.color}">${v.mode === 'potato' ? '✅' : '🎉'}</div>`
+    : cardHTML(p.top, { owner: mine ? 'me' : s, size, color: p.color, hidden });
+  return `<div class="slot ${frozen} ${mine ? 'is-me' : ''}" style="--seat:${p.color}">${card}
+    <div class="tag-line">${p.avatar} ${mine ? 'You' : esc(p.name)} · ${scoreText(v, p)}</div></div>`;
 }
 
-function centerHTML(v, hidden) {
+function centerCell(v, hidden) {
+  const c = v.center;
+  const card = c.top == null
+    ? '<div class="card cell empty">🏁</div>'
+    : cardHTML(c.top, { owner: 'center', size: 'cell', color: '#2b2350', hidden });
+  return `<div class="slot center-slot">${card}<div class="tag-line">🎁 Gift · ${c.count} left</div></div>`;
+}
+
+function centerPile(v, hidden) {
   const c = v.center;
   const card = c.top == null
     ? '<div class="card empty">🏁</div>'
@@ -173,14 +225,11 @@ function centerHTML(v, hidden) {
   return `<div class="pile">${card}<span class="badge">🃏 ${c.count}</span></div>`;
 }
 
-function myHTML(v, now, hidden) {
-  const p = v.players[ctl.seat];
-  const size = v.mode === 'poison' ? 'mine' : 'big';
+function chip(v, s, now, extra = '') {
+  const p = v.players[s];
   const frozen = p.frozenUntil > now ? 'frozen' : '';
-  const card = p.top == null
-    ? `<div class="card ${size} empty" style="--seat:${p.color}">${v.mode === 'potato' ? '✅' : '🎉'}</div>`
-    : cardHTML(p.top, { owner: 'me', size, color: p.color, hidden });
-  return `<div class="slot ${frozen}" style="--seat:${p.color}">${card}<div class="tag-line">${p.avatar} You · ${scoreText(v, p)}</div></div>`;
+  const name = s === ctl.seat ? 'You' : esc(p.name);
+  return `<div class="chip ${extra} ${frozen}" style="--seat:${p.color}"><span class="av">${p.avatar}</span><b>${name}</b><span>${scoreText(v, p)}</span></div>`;
 }
 
 function hintText(v, now) {
@@ -192,7 +241,7 @@ function hintText(v, now) {
     tower: 'Tap the emoji your card shares with the middle card',
     well: 'Tap the emoji your card shares with the middle card',
     potato: 'Tap the match on a rival’s card to pass your pile',
-    poison: 'Tap the match on a rival’s card to gift them the middle card',
+    poison: 'Tap the match on a rival’s card to give them the gift',
   }[v.mode];
 }
 
@@ -200,21 +249,36 @@ function renderGame(v) {
   if (!ctl) return;
   const now = ctl.now();
   const n = v.players.length;
-  const cardMode = v.mode === 'potato' || v.mode === 'poison';
   const hidden = v.phase === 'countdown';
+  const opps = [1, 2, 3].map((k) => (ctl.seat + k) % n);
   const m = MODES[v.mode];
   $('#gameTitle').textContent = `${m.icon} ${m.name}`;
   $('#gameInfo').textContent = v.mode === 'potato' ? `${v.round}/${v.rounds}` : '';
-  $('#opponents').innerHTML = [1, 2, 3].map((k) => oppHTML(v, (ctl.seat + k) % n, cardMode, now, hidden)).join('');
-  $('#centerZone').innerHTML = v.center ? centerHTML(v, hidden) : '';
-  $('#myZone').innerHTML = myHTML(v, now, hidden);
-  $('#hint').textContent = hintText(v, now);
+
+  if (v.mode === 'potato' || v.mode === 'poison') {
+    // 2×2 table: three rivals + (your card | the gift pile)
+    const cells = opps.map((s) => seatCell(v, s, now, hidden));
+    cells.push(v.mode === 'potato' ? seatCell(v, ctl.seat, now, hidden) : centerCell(v, hidden));
+    $('#table').innerHTML = cells.join('');
+    $('#opponents').innerHTML = '';
+    $('#centerZone').innerHTML = '';
+    $('#myZone').innerHTML = v.mode === 'poison' ? chip(v, ctl.seat, now, 'mine-chip') : '';
+  } else {
+    $('#table').innerHTML = '';
+    $('#opponents').innerHTML = opps.map((s) => chip(v, s, now)).join('');
+    $('#centerZone').innerHTML = centerPile(v, hidden);
+    $('#myZone').innerHTML = seatCell(v, ctl.seat, now, hidden, 'big');
+  }
+
+  const h = $('#hint');
+  if (!h.classList.contains('feed')) h.textContent = hintText(v, now);
+
   $$('#game .card[data-owner]').forEach((el) => {
     const k = el.dataset.owner;
     if (lastTops[k] != null && lastTops[k] !== el.dataset.id) el.classList.add('pop');
     lastTops[k] = el.dataset.id;
   });
-  if (shakeMe) { shakeMe = false; $('#myZone .slot')?.classList.add('shake'); }
+  if (shakeMe) { shakeMe = false; $('#game .slot.is-me, #game .mine-chip')?.classList.add('shake'); }
   renderOverlay();
   scheduleRefresh(v, now);
 }
@@ -234,7 +298,7 @@ function renderOverlay() {
     const left = Math.max(1, Math.min(3, Math.ceil((v.startAt - ctl.now()) / 1000)));
     if (left !== lastCount) { lastCount = left; sound.count(); }
     const round = v.mode === 'potato' ? `Round ${v.round}/${v.rounds} · ` : '';
-    html = `<div class="ov-num" key="${left}">${left}</div><div class="ov-sub">${round}${MODES[v.mode].goal}</div>`;
+    html = `<div class="ov-num">${left}</div><div class="ov-sub">${round}${MODES[v.mode].goal}</div>`;
   } else if (v.phase === 'roundEnd' && v.event?.loser != null) {
     const p = v.players[v.event.loser];
     html = `<div class="ov-big">🥔🔥</div><div class="ov-sub">${p.avatar} ${esc(seatName(v, v.event.loser))} got stuck with ${v.event.cards} cards!</div>`;
@@ -247,10 +311,9 @@ function renderOverlay() {
 
 /* ---------- input ---------- */
 function resolveMove(v, owner, sym) {
-  const meSeat = ctl.seat;
   const P = v.players;
   const has = (s, x) => P[s].top != null && DECK[P[s].top].includes(x);
-  const others = P.map((_, i) => i).filter((i) => i !== meSeat);
+  const others = P.map((_, i) => i).filter((i) => i !== ctl.seat);
   switch (v.mode) {
     case 'tower':
     case 'well':
@@ -279,10 +342,8 @@ function onGameTap(e) {
   if (!symEl || !view || !ctl) return;
   e.preventDefault();
   if (view.phase !== 'play') return;
-  const p = view.players[ctl.seat];
-  if (p.frozenUntil > ctl.now()) { sound.bad(); return; }
-  const owner = symEl.closest('.card').dataset.owner;
-  const move = resolveMove(view, owner, Number(symEl.dataset.sym));
+  if (view.players[ctl.seat].frozenUntil > ctl.now()) { sound.bad(); return; }
+  const move = resolveMove(view, symEl.closest('.card').dataset.owner, Number(symEl.dataset.sym));
   if (!move) return;
   symEl.classList.add('tapped');
   ctl.tap({ ...move, turn: view.turn });
@@ -315,7 +376,7 @@ async function hostOnline() {
   await withBusy(async () => {
     const room = await hostRoom(me());
     const o = online = {
-      room, isHost: true, status: 'lobby', mode: 'tower', levels: [null, 'easy', 'medium', 'hard'],
+      room, isHost: true, status: 'lobby', mode: 'tower', levels: [null, ...soloLevels],
       players: {}, humans: [room.uid], seats: [], seatOf: {}, session: null,
     };
     room.on('players', (p) => {
@@ -358,15 +419,15 @@ function hostSyncPlayers() {
 
 function lobbySeats() {
   const o = online;
-  return [0, 1, 2, 3].map((i) => {
+  return nameBots([0, 1, 2, 3].map((i) => {
     const uid = o.humans[i];
     if (uid) {
       const p = o.players[uid] || (uid === o.room.uid ? me() : {});
       return { uid, name: String(p.name || 'Player').slice(0, 12), avatar: p.avatar || '🙂', color: SEAT_COLORS[i] };
     }
     const lv = o.levels[i] || 'medium';
-    return { bot: lv, name: BOTS[lv].name, avatar: BOTS[lv].avatar, color: SEAT_COLORS[i] };
-  });
+    return { bot: lv, avatar: BOTS[lv].avatar, color: SEAT_COLORS[i] };
+  }));
 }
 
 function publishLobby() {
@@ -478,9 +539,9 @@ function renderLobby() {
 async function shareInvite() {
   if (!online) return;
   const url = `${location.origin}${location.pathname}?room=${online.room.code}`;
-  const text = `Join my Spot Taps game! Room ${online.room.code}`;
+  const text = `Join my SpoTap It! game! Room ${online.room.code}`;
   try {
-    if (navigator.share) await navigator.share({ title: 'Spot Taps', text, url });
+    if (navigator.share) await navigator.share({ title: 'SpoTap It!', text, url });
     else { await navigator.clipboard.writeText(url); toast('Invite link copied 📋'); }
   } catch { /* share cancelled */ }
 }
@@ -496,8 +557,8 @@ async function leaveOnline() {
 function onlineGone(msg) {
   stopGame();
   leaveOnline();
-  toast(msg, '#ff5a5f', 3200);
   show('home');
+  toast(msg, '#ff5a5f', 3200);
 }
 
 /* ---------- init ---------- */
@@ -511,7 +572,7 @@ function renderHelp() {
     <div class="help-card"><b>🔍 The big idea</b><p>Any two cards share <b>exactly one</b> emoji. Spot it before everyone else and tap it!</p></div>
     <div class="help-card" style="--c:#2f9bff"><b>❄️ Careful</b><p>A wrong tap freezes you for 1.5 seconds.</p></div>
     ${Object.values(MODES).map((m) => `<div class="help-card" style="--c:${m.color}"><b>${m.icon} ${m.name}</b><p>${m.how}</p></div>`).join('')}
-    <div class="help-card" style="--c:#f59e0b"><b>🤖 Always 4 players</b><p>🐣 Easy, 🦉 Medium and 🐲 Hard bots fill every empty seat. Online, the host can change a bot's level by tapping its seat.</p></div>
+    <div class="help-card" style="--c:#f59e0b"><b>🤖 Always 4 players</b><p>Bots fill every empty seat. Pick Easy, Medium or Hard for each one before you start.</p></div>
     <a class="btn ghost" href="assets/cards/index.html" target="_blank" rel="noopener">🖨️ Printable deck</a>`;
 }
 
@@ -528,6 +589,15 @@ function init() {
     sound.click();
   });
   $('#homeCard').innerHTML = cardHTML(Math.floor(Math.random() * DECK.length), { owner: 'demo', size: 'demo', color: '#6c4cff' });
+  renderSoloBots();
+  $('#soloBots').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-bot]');
+    if (!b) return;
+    soloLevels[Number(b.dataset.bot)] = b.dataset.lv;
+    saveLevels();
+    renderSoloBots();
+    sound.click();
+  });
   modeTiles($('#soloModes'), startSolo);
   renderHelp();
 
