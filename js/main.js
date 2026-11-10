@@ -9,7 +9,7 @@ const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const LEVELS = ['easy', 'medium', 'hard'];
-const PROFILE_KEY = 'spotclash.profile';
+const PROFILE_KEY = 'spottaps.profile';
 
 const profile = loadProfile();
 let ctl = null;    // active game: { seat, now(), tap(move), quit(), again(), canAgain }
@@ -478,9 +478,9 @@ function renderLobby() {
 async function shareInvite() {
   if (!online) return;
   const url = `${location.origin}${location.pathname}?room=${online.room.code}`;
-  const text = `Join my Spot Clash game! Room ${online.room.code}`;
+  const text = `Join my Spot Taps game! Room ${online.room.code}`;
   try {
-    if (navigator.share) await navigator.share({ title: 'Spot Clash', text, url });
+    if (navigator.share) await navigator.share({ title: 'Spot Taps', text, url });
     else { await navigator.clipboard.writeText(url); toast('Invite link copied 📋'); }
   } catch { /* share cancelled */ }
 }
