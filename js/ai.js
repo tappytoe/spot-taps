@@ -1,14 +1,17 @@
+
 // Bot opponents: reaction time and mistake rate depend on level.
 import { common } from './deck.js';
 import { pick } from './util.js';
 import { SYMBOLS } from './emoji.js';
 
-export const BOT_SPEED = { easy: [3800, 6500], medium: [2400, 4300], hard: [1500, 2700] };
-export const BOT_ERROR = { easy: 0.15, medium: 0.07, hard: 0.02 };
+export const BOT_SPEED = { easy: [4500, 7500], medium: [3000, 5000], hard: [2000, 3400] };
+export const BOT_ERROR = { easy: 0.15, medium: 0.08, hard: 0.03 };
+// Games where the bot must scan several rival cards take it longer.
+export const MODE_FACTOR = { tower: 1, well: 1, potato: 1.2, poison: 1.3 };
 
-export function botDelay(level, r = Math.random) {
+export function botDelay(level, mode = 'tower', r = Math.random) {
   const [a, b] = BOT_SPEED[level] || BOT_SPEED.medium;
-  return a + r() * (b - a);
+  return (a + r() * (b - a)) * (MODE_FACTOR[mode] || 1);
 }
 
 const top = (pile) => pile[pile.length - 1];
