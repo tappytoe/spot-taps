@@ -23,4 +23,4 @@ http.createServer(async (req, res) => {
     res.writeHead(404);
     res.end('Not found');
   }
-}).listen(port, () => console.log(`Spot Clash running at http://localhost:${port}`));
+}).listen(port, () => console.log(`Spot Taps running at http://localhost:${port}`));
