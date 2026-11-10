@@ -14,7 +14,7 @@ function cardSVG(id) {
     const cx = (s.x / 100) * S, cy = (s.y / 100) * S, r = (s.s / 200) * S;
     return `<g transform="translate(${cx.toFixed(1)} ${cy.toFixed(1)}) rotate(${s.rot})">`
       + `<circle r="${r.toFixed(1)}" fill="hsl(${SYMBOL_HUES[s.sym]},85%,90%)"/>`
-      + `<text font-size="${(r * 1.2).toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-family='${FONT}'>${SYMBOLS[s.sym]}</text></g>`;
+      + `<text font-size="${(r * 1.44).toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-family='${FONT}'>${SYMBOLS[s.sym]}</text></g>`;
   }).join('');
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${S} ${S}" width="${S}" height="${S}">
