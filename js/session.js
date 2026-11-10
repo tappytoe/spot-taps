@@ -69,7 +69,7 @@ export class HostSession {
       }
       const m = botMove(st, seat);
       if (m) this.tap(seat, { ...m, turn: st.turn });
-    }, Math.max(0, extra) + botDelay(p.bot));
+    }, Math.max(0, extra) + botDelay(p.bot, this.state.mode));
     this.timers.set(seat, t);
   }
 
