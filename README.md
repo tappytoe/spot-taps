@@ -1,67 +1,68 @@
 # 🔍 Spot Taps
+*A tappytoe games release* · **[▶️ Play now](https://tappytoe.github.io/spot-taps/)**
 
-A fast emoji matching party game for **4 players**. Every two cards share **exactly one** emoji. Spot it first and tap it!
-Play solo against 🐣 Easy, 🦉 Medium and 🐲 Hard bots, or online with friends. Empty seats are always filled with bots.
+
+
+![Spot Taps thumbnail](https://tappytoe.github.io/spot-taps/thumbnail.png)
+
+
+
+**Spot Taps** is a fast, colorful emoji matching party game made for phones.
+Every two cards share **exactly one** emoji. Spot it, tap it, and beat everyone to it!
+
+- 👥 **Always 4 players.** Play solo against bots you pick yourself (🐣 Easy, 🦉 Medium, 🐲 Hard), or online with friends. Empty seats are filled by bots.
+- 📱 **Phone-first.** Big tappable cards, no install, works in any modern browser and can be added to your home screen.
+- 🌐 **Online rooms.** Share a 4-letter code or invite link. If someone drops out, a bot takes over their seat.
 
 ## Mini games
-- 🗼 **The Tower**: tap the emoji your card shares with the middle card to win it. Most cards wins.
-- 🪣 **The Well**: tap the emoji your card shares with the middle card to dump yours. First to empty wins.
-- 🥔 **Hot Potato**: tap the match on a rival's card to pass your pile. The last one holding takes a penalty. 5 rounds.
-- 🎁 **Poisoned Gift**: tap the match between the middle card and a rival's card to gift it to them. Fewest cards wins.
+| | Game | Goal |
+|---|---|---|
+| 🗼 | **The Tower** | Tap the emoji your card shares with the middle card to win it. Most cards wins. |
+| 🪣 | **The Well** | Tap the emoji your card shares with the middle card to dump yours. First to empty wins. |
+| 🥔 | **Hot Potato** | Tap the match on a rival's card to pass your pile. Last one holding takes a penalty. 5 rounds. |
+| 🎁 | **Poisoned Gift** | Tap the match between the middle card and a rival's card to gift it to them. Fewest cards wins. |
 
 A wrong tap freezes you for 1.5 s ❄️.
 
 ## Run locally
 ```bash
-npm start        # http://localhost:8080
-npm test         # deck, rules and bot tests
-npm run art      # export 57 card SVGs + back + printable gallery into assets/cards/
-npm run preview  # build dist/ and serve it
+npm install          # only needed for the thumbnail tool
+npm start            # http://localhost:8080
+npm test             # deck, rules and bot tests
+npm run art          # 57 card SVGs + back + printable gallery → assets/cards/
+npm run thumbnail    # 1200×630 preview → assets/thumbnail.png
 ```
 
 ## Online multiplayer (Firebase)
-The host's browser runs the rules and publishes snapshots to Firebase Realtime Database. Guests push their taps.
-If a guest drops out, a bot takes their seat. If the host leaves, the room closes.
+The host's browser runs the rules and publishes snapshots to Firebase Realtime Database. Guests send their taps.
 
 1. Create a project at https://console.firebase.google.com.
-2. **Build → Realtime Database → Create database**. On the **Rules** tab, paste `database.rules.json` and publish.
-3. **Build → Authentication → Sign-in method → Anonymous → Enable**.
-4. **Authentication → Settings → Authorized domains**: add `<you>.github.io`.
-5. **Project settings → Your apps → Web app**: copy the config values.
-6. In GitHub, go to **Settings → Secrets and variables → Actions → Variables** and add
+2. **Realtime Database → Create database**. On the **Rules** tab, paste `database.rules.json` and publish.
+3. **Authentication → Sign-in method → Anonymous → Enable**. Then add `tappytoe.github.io` under **Authorized domains**.
+4. **Project settings → Your apps → Web app**: copy the config.
+5. In GitHub, go to **Settings → Secrets and variables → Actions → Variables** and add
    `FIREBASE_API_KEY`, `FIREBASE_AUTH_DOMAIN`, `FIREBASE_DATABASE_URL`, `FIREBASE_PROJECT_ID`, `FIREBASE_APP_ID`.
-   For local testing, paste the values into `js/firebase-config.js` instead.
 
-Without a config, solo play still works and the online buttons explain what's missing.
-
-## Deploy to GitHub Pages
-```bash
-git init && git add . && git commit -m "Spot Taps v1"
-git branch -M main
-git remote add origin https://github.com/<you>/spot-taps.git
-git push -u origin main
-```
-In the repo, go to **Settings → Pages → Source: GitHub Actions**.
-Every push to `main` runs the tests, exports the card art, builds `dist/` and deploys to `https://<you>.github.io/spot-taps`. Pull requests run tests only.
+## Deploy
+Every push to `main` runs the tests, exports the card art, builds the site, renders `thumbnail.png` and deploys to GitHub Pages. Pull requests run tests only.
 
 ## Project structure
 ```
 index.html            app shell (all screens)
 css/style.css         mobile-first styles and animations
-js/deck.js            57-card projective-plane deck
-js/emoji.js           emoji symbols, avatars, seat colors, modes
-js/layout.js          deterministic symbol placement per card
+js/deck.js            57-card deck (every pair shares one symbol)
+js/emoji.js           emoji, avatars, seat colors, bots, modes
+js/layout.js          symbol placement per card
 js/engine.js          pure rules for all 4 mini games
-js/ai.js              bot speed, mistakes and target choice
-js/session.js         game runner: phases, timers, bots (solo + online host)
-js/net.js             Firebase rooms, presence, actions
+js/ai.js              bot speed, mistakes and targeting
+js/session.js         game runner: phases, pauses, bots
+js/net.js             Firebase rooms and presence
 js/cards-ui.js        card rendering
 js/sound.js           WebAudio sound effects
-js/main.js            screens, input, lobby, online flow
-tools/                build, art export, local server
+js/main.js            screens, input, animations, online flow
+tools/                build, art, thumbnail, local server
 tests/                node:test suite (runs in CI)
-.github/workflows/    test → build → deploy
 ```
 
 ## License
-MIT. "Spot It!"/"Dobble" are trademarks of their owners; this is an independent game with original art.
+MIT © tappytoe games. "Spot It!"/"Dobble" are trademarks of their owners; this is an independent game with original art.
